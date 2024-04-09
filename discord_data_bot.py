@@ -7,6 +7,7 @@ from discord import Activity
 from discord import ActivityType
 from discord import Status
 from dotenv import dotenv_values
+import fii_dii_data
 
 cred = dotenv_values('.env')
 
@@ -45,13 +46,33 @@ async def oi(interaction):
     await interaction.response.send_message(file=file, embed=dataEmbed)
 
 
+@tree.command(name="get_gross_fut_oi", description="Get Outstanding Futures OI")
+async def gross_oi(interaction):
+    dataEmbed = Embed(
+        title="Outstanding Futures OI",
+        # description="Disclaimer: Don't use this data to make investments",
+        color=0x002366,
+    )
+    file = File("Gross_OI.png", filename="image.png")
+    dataEmbed.set_image(url="attachment://image.png")
+    await interaction.response.send_message(file=file, embed=dataEmbed)
+
+
+@tree.command(name="fii_dii", description="Get FII & DII Data")
+async def first_command(interaction):
+    data = fii_dii_data.get_fii_dii_data()
+    detailsEmbed = Embed(title="FII DII Data",
+                         description=data[0], color=data[1])
+    await interaction.response.send_message(embed=detailsEmbed)
+
 if __name__ == "__main__":
 
     @client.event
     async def on_ready():
         await tree.sync()
         await client.change_presence(
-            activity=Activity(type=ActivityType.watching, name="Market Participants"),
+            activity=Activity(type=ActivityType.watching,
+                              name="Market Participants"),
             status=Status.online,
         )
         print("Bot has logged in as {0.user}".format(client))
