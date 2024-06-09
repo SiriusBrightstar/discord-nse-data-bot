@@ -20,7 +20,7 @@ def index_history():
         last_two_dates_str = [date.strftime('%d %b %Y')
                               for date in last_two_dates_ist]
 
-        return last_two_dates_str
+        return last_two_dates_str.reverse()
     except Exception as e:
         print(traceback.format_exc())
         raise Exception(e)
