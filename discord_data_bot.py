@@ -41,7 +41,7 @@ async def oi(interaction):
         description="Disclaimer: Don't use this data to make investments",
         color=0x002366,
     )
-    file = File("plot1.png", filename="image.png")
+    file = File("Participant_Wise_OI_Data.png", filename="image.png")
     dataEmbed.set_image(url="attachment://image.png")
     await interaction.response.send_message(file=file, embed=dataEmbed)
 
@@ -66,7 +66,6 @@ async def first_command(interaction):
     await interaction.response.send_message(embed=detailsEmbed)
 
 if __name__ == "__main__":
-
     @client.event
     async def on_ready():
         await tree.sync()
