@@ -22,13 +22,7 @@ def get_dates() -> list:
         today = datetime.now()
         previous_date_5 = today - timedelta(5)
 
-        historical_data = index_history(
-            "NIFTY 50",
-            f"{previous_date_5.strftime('%d-%b-%Y')}",
-            f"{today.strftime('%d-%b-%Y')}",
-        )
-
-        list_of_past_dates = list(historical_data["HistoricalDate"])
+        list_of_past_dates = index_history()
         print(list_of_past_dates)
 
         # Convert Dates to get Participant wise OI Data
