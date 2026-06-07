@@ -1,5 +1,7 @@
 import df2img
 import traceback
+import logging
+import os
 from io import StringIO
 from requests import get
 from datetime import datetime
@@ -10,6 +12,11 @@ from PIL import Image
 from PIL import ImageDraw
 from PIL import ImageFont
 from dates import index_history
+
+OUTPUT_DIR = os.environ.get("BOT_OUTPUT_DIR", "/tmp/discord_nse_data_bot")
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+logger = logging.getLogger(__name__)
 
 url = "https://nsearchives.nseindia.com/content/nsccl/fao_participant_oi_"
 headers = {
@@ -29,7 +36,7 @@ def get_dates() -> list:
         )
 
         list_of_past_dates = list(historical_data["HistoricalDate"])
-        print(list_of_past_dates)
+        logger.info(f"Historical dates found: {list_of_past_dates}")
 
         # Convert Dates to get Participant wise OI Data
         previous_date_1 = datetime.strptime(list_of_past_dates[1], "%d %b %Y").strftime(
@@ -44,8 +51,7 @@ def get_dates() -> list:
 
         return [url_0, url_1, [list_of_past_dates[0], list_of_past_dates[1]]]
     except Exception as e:
-        print(f"Error getting dates: {e}")
-        traceback.print_exc()
+        logger.error(f"Error getting dates: {e}")
         return None
 
 
@@ -58,21 +64,18 @@ def get_oi_data(url_w_dates) -> list:
         if (csv_0.status_code == 200) and (csv_1.status_code == 200):
             data_0 = StringIO(csv_0.content.decode("utf-8"))
             df_0 = read_csv(data_0, skiprows=1)
-            # print(df_0)
 
-            print("Successfully received data from NSE")
+            logger.info("Successfully received data from NSE")
             data_1 = StringIO(csv_1.content.decode("utf-8"))
             df_1 = read_csv(data_1, skiprows=1)
-            # print(df_1)
             return [df_0, df_1, url_w_dates[2]]
         else:
-            print(
+            logger.error(
                 f"Failed to get response. Status Code: {csv_0.status_code} & {csv_1.status_code}"
             )
 
     except Exception as e:
-        print(f"Error getting data: {e}")
-        traceback.print_exc()
+        logger.error(f"Error getting data: {e}")
 
 
 def calculate_oi_change(data):
@@ -92,9 +95,6 @@ def calculate_oi_change(data):
     )
     data[1]["Net Index Option"] = data[1]["Total CALL"] - data[1]["Total PUT"]
 
-    # print(f"OI Data for {data[2][1]}")
-    # print(data[1][["Client Type", "Total Long Contracts\t", "Total Short Contracts"]])
-
     data[0]["Index FUT"] = data[0]["Future Index Long"] - \
         data[0]["Future Index Short"]
     data[0]["Stock FUT"] = (
@@ -107,9 +107,6 @@ def calculate_oi_change(data):
         data[0]["Option Index Put Long"] - data[0]["Option Index Put Short"]
     )
     data[0]["Net Index Option"] = data[0]["Total CALL"] - data[0]["Total PUT"]
-
-    # print(f"OI Data for {data[2][0]}")
-    # print(data[0][["Client Type", "Total Long Contracts\t", "Total Short Contracts"]])
 
     net_df = DataFrame()
     net_df["Participant"] = data[0]["Client Type"]
@@ -157,33 +154,37 @@ def save_img(data):
             fig_size=(700, 200),
             show_fig=False,
         )
-        df2img.save_dataframe(fig=fig, filename="raw_image.png")
+        raw_path = os.path.join(OUTPUT_DIR, "raw_image.png")
+        df2img.save_dataframe(fig=fig, filename=raw_path)
     except Exception as e:
-        print(f"Error generating image: {e}")
-        traceback.print_exc()
+        logger.error(f"Error generating image: {e}")
 
 
 def add_isb_link():
     try:
         text = "IndianStreetBets Discord: https://discord.gg/8MrqS6CASz"
         last_update = f"Last Update: {datetime.now().strftime('%d %b %Y %X')}"
-        with Image.open("raw_image.png") as img:
+        raw_path = os.path.join(OUTPUT_DIR, "raw_image.png")
+        final_path = os.path.join(OUTPUT_DIR, "Participant_Wise_OI_Data.png")
+        with Image.open(raw_path) as img:
             I1 = ImageDraw.Draw(img)
             myFont = ImageFont.truetype(
                 "./fonts/JetBrainsMono-Regular.ttf", 12
             )
             I1.text((150, 23), text, font=myFont, fill=(0, 0, 0))
             I1.text((5, 180), last_update, font=myFont, fill=(0, 0, 0))
-            img.save("Participant_Wise_OI_Data.png")
-            print("Edited Image with ISB Link")
+            img.save(final_path)
+            logger.info(f"Edited Image with ISB Link saved to {final_path}")
     except Exception as e:
-        print(f"Error Adding ISB Link")
-        traceback.print_exc()
+        logger.error(f"Error Adding ISB Link: {e}")
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     dates = get_dates()
-    data = get_oi_data(dates)
-    oi_data = calculate_oi_change(data)
-    save_img(oi_data)
-    add_isb_link()
+    if dates:
+        data = get_oi_data(dates)
+        if data:
+            oi_data = calculate_oi_change(data)
+            save_img(oi_data)
+            add_isb_link()

@@ -1,0 +1,15 @@
+[Unit]
+Description=Discord NSE Data Bot Service
+After=network.target
+
+[Service]
+User=discord_bot_user
+Group=discord_bot_user
+WorkingDirectory=/opt/discord_nse_data_bot/src
+ExecStart=/opt/discord_nse_data_bot/venv/bin/python /opt/discord_nse_data_bot/src/main.py
+Restart=on-failure
+
+EnvironmentFile=/etc/discord_nse_data_bot.env
+
+[Install]
+WantedBy=multi-user.target

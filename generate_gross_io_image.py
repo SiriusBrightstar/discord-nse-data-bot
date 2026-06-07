@@ -2,7 +2,14 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 import generate_oi_image
+import logging
+import os
 from datetime import datetime
+
+OUTPUT_DIR = os.environ.get("BOT_OUTPUT_DIR", "/tmp/discord_nse_data_bot")
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+logger = logging.getLogger(__name__)
 
 isb_discord_link = "https://discord.gg/8MrqS6CASz"
 
@@ -99,12 +106,17 @@ def generate_image(gross_oi, list_change_oi, date):
     plt.title(last_update, fontsize=8)
     plt.legend(loc="upper right")
     # plt.show()
-    plt.savefig("Gross_OI.png", bbox_inches="tight")
+    final_path = os.path.join(OUTPUT_DIR, "Gross_OI.png")
+    plt.savefig(final_path, bbox_inches="tight")
+    logger.info(f"Gross OI Image saved to {final_path}")
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     dates = generate_oi_image.get_dates()
-    data_date = dates[2][0]
-    data = generate_oi_image.get_oi_data(dates)
-    oi, change_oi_list = calculations(data)
-    generate_image(oi, change_oi_list, data_date)
+    if dates:
+        data_date = dates[2][0]
+        data = generate_oi_image.get_oi_data(dates)
+        if data:
+            oi, change_oi_list = calculations(data)
+            generate_image(oi, change_oi_list, data_date)
