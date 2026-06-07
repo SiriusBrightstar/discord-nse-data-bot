@@ -37,19 +37,18 @@ class NSEBot(discord.Client):
     async def setup_hook(self):
         self.data_scheduler.start()
 
-    @tasks.loop(minutes=15)
-    async def data_scheduler(self):
+    async def process_data(self, force=False):
         now = datetime.now()
-        # Weekdays only (0-4 are Mon-Fri)
-        if now.weekday() > 4:
+        # Weekdays only (unless forced on startup)
+        if not force and now.weekday() > 4:
             return
 
-        # Time window 19:00 to 23:00
+        # Time window 19:00 to 23:00 (unless forced)
         start_time = time(19, 0)
         end_time = time(23, 0)
         current_time = now.time()
 
-        if not (start_time <= current_time <= end_time):
+        if not force and not (start_time <= current_time <= end_time):
             return
 
         today_str = now.strftime("%d-%m-%Y")
@@ -57,7 +56,7 @@ class NSEBot(discord.Client):
             logger.debug(f"Data for {today_str} already processed today.")
             return
 
-        logger.info(f"Checking for new NSE data... (Current time: {now.strftime('%H:%M:%S')})")
+        logger.info(f"Checking for NSE data... (Force: {force})")
 
         try:
             # Check for dates
@@ -91,7 +90,11 @@ class NSEBot(discord.Client):
                 logger.info("New data not yet available on NSE.")
 
         except Exception as e:
-            logger.error(f"Error in data scheduler: {e}", exc_info=True)
+            logger.error(f"Error in data processing: {e}", exc_info=True)
+
+    @tasks.loop(minutes=15)
+    async def data_scheduler(self):
+        await self.process_data()
 
     @data_scheduler.before_loop
     async def before_data_scheduler(self):
@@ -164,6 +167,8 @@ async def on_ready():
         status=Status.online,
     )
     logger.info(f"Bot has logged in as {client.user}")
+    # Trigger initial data generation on startup
+    await client.process_data(force=True)
 
 if __name__ == "__main__":
     if not TOKEN:
