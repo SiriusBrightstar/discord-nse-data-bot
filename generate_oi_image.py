@@ -26,16 +26,7 @@ headers = {
 def get_dates() -> list:
     try:
         # Get Previous Market Open Dates
-        today = datetime.now()
-        previous_date_5 = today - timedelta(5)
-
-        historical_data = index_history(
-            "NIFTY 50",
-            f"{previous_date_5.strftime('%d-%b-%Y')}",
-            f"{today.strftime('%d-%b-%Y')}",
-        )
-
-        list_of_past_dates = list(historical_data["HistoricalDate"])
+        list_of_past_dates = index_history()
         logger.info(f"Historical dates found: {list_of_past_dates}")
 
         # Convert Dates to get Participant wise OI Data
@@ -80,11 +71,20 @@ def get_oi_data(url_w_dates) -> list:
 
 def calculate_oi_change(data):
     # Calculate Change in IO
+    
+    # Handle both versions of column names if they vary
+    def get_col(df, options):
+        for opt in options:
+            if opt in df.columns:
+                return opt
+        return options[0]
+
+    stock_short_col = get_col(data[1], ["Future Stock Short\t", "Future Stock Short       ", "Future Stock Short"])
 
     data[1]["Index FUT"] = data[1]["Future Index Long"] - \
         data[1]["Future Index Short"]
     data[1]["Stock FUT"] = (
-        data[1]["Future Stock Long"] - data[1]["Future Stock Short\t"]
+        data[1]["Future Stock Long"] - data[1][stock_short_col]
     )
     data[1]["Total CALL"] = (
         data[1]["Option Index Call Long"] - data[1]["Option Index Call Short"]
@@ -95,10 +95,12 @@ def calculate_oi_change(data):
     )
     data[1]["Net Index Option"] = data[1]["Total CALL"] - data[1]["Total PUT"]
 
+    stock_short_col_0 = get_col(data[0], ["Future Stock Short\t", "Future Stock Short       ", "Future Stock Short"])
+
     data[0]["Index FUT"] = data[0]["Future Index Long"] - \
         data[0]["Future Index Short"]
     data[0]["Stock FUT"] = (
-        data[0]["Future Stock Long"] - data[0]["Future Stock Short\t"]
+        data[0]["Future Stock Long"] - data[0][stock_short_col_0]
     )
     data[0]["Total CALL"] = (
         data[0]["Option Index Call Long"] - data[0]["Option Index Call Short"]

@@ -39,17 +39,22 @@ class NSEBot(discord.Client):
 
     async def process_data(self, force=False):
         now = datetime.now()
-        # Weekdays only (unless forced on startup)
-        if not force and now.weekday() > 4:
-            return
+        
+        # Automated checks (unless forced on startup)
+        if not force:
+            # Weekdays only (0-4 are Mon-Fri)
+            if now.weekday() > 4:
+                logger.debug("Skipping: Weekend.")
+                return
 
-        # Time window 19:00 to 23:00 (unless forced)
-        start_time = time(19, 0)
-        end_time = time(23, 0)
-        current_time = now.time()
+            # Time window 19:00 to 23:00
+            start_time = time(19, 0)
+            end_time = time(23, 0)
+            current_time = now.time()
 
-        if not force and not (start_time <= current_time <= end_time):
-            return
+            if not (start_time <= current_time <= end_time):
+                logger.debug("Skipping: Outside of time window.")
+                return
 
         today_str = now.strftime("%d-%m-%Y")
         if self.last_processed_date == today_str:
@@ -57,7 +62,7 @@ class NSEBot(discord.Client):
             return
 
         logger.info(f"Checking for NSE data... (Force: {force})")
-
+        
         try:
             # Check for dates
             dates = generate_oi_image.get_dates()
@@ -65,32 +70,29 @@ class NSEBot(discord.Client):
                 logger.warning("Could not retrieve dates from NSE.")
                 return
 
-            latest_nse_date = dates[2][0] # Format: "07 Jun 2026" or similar from dates.py
-
-            # If the latest date from NSE is today (or the most recent market day)
-            # and we haven't processed it yet.
-            # Note: NSE usually updates in the evening.
-
+            latest_nse_date = dates[2][0]
+            
             logger.info(f"Latest data available on NSE: {latest_nse_date}")
-
+            
+            # Actually generate the images
             oi_data = generate_oi_image.get_oi_data(dates)
             if oi_data:
                 # Participant Wise OI
                 oi_change = generate_oi_image.calculate_oi_change(oi_data)
                 generate_oi_image.save_img(oi_change)
                 generate_oi_image.add_isb_link()
-
+                
                 # Gross OI
                 oi_gross, change_oi_list = generate_gross_io_image.calculations(oi_data)
                 generate_gross_io_image.generate_image(oi_gross, change_oi_list, latest_nse_date)
-
+                
                 self.last_processed_date = today_str
                 logger.info(f"Successfully processed and updated data for {today_str}")
             else:
-                logger.info("New data not yet available on NSE.")
+                logger.info("New data not yet available on NSE for requested dates.")
 
         except Exception as e:
-            logger.error(f"Error in data processing: {e}", exc_info=True)
+            logger.error(f"Error processing data: {e}", exc_info=True)
 
     @tasks.loop(minutes=15)
     async def data_scheduler(self):
@@ -167,7 +169,7 @@ async def on_ready():
         status=Status.online,
     )
     logger.info(f"Bot has logged in as {client.user}")
-    # Trigger initial data generation on startup
+    # Trigger initial data generation on startup (irrespective of weekday/time)
     await client.process_data(force=True)
 
 if __name__ == "__main__":
