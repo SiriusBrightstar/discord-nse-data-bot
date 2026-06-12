@@ -55,9 +55,21 @@ sudo cp "$SERVICE_FILE" /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable discord_nse_data_bot.service
 
-# 7. Set final permissions
+# 7. Configure logrotate for privacy
+echo "Configuring logrotate for weekly log deletion..."
+cat <<EOF | sudo tee /etc/logrotate.d/discord_nse_data_bot > /dev/null
+/var/log/discord_nse_data_bot/bot.log {
+    weekly
+    rotate 0
+    copytruncate
+    missingok
+    notifempty
+}
+EOF
+
+# 8. Set final permissions
 sudo chown -R "$BOT_USER:$BOT_USER" "$INSTALL_DIR"
 
 echo "Installation complete!"
 echo "You can start the service using: sudo systemctl start discord_nse_data_bot.service"
-echo "Check logs using: journalctl -u discord_nse_data_bot.service -f"
+echo "Check logs using: tail -f /var/log/discord_nse_data_bot/bot.log"

@@ -9,6 +9,11 @@ WorkingDirectory=/opt/discord_nse_data_bot/src
 ExecStart=/opt/discord_nse_data_bot/venv/bin/python /opt/discord_nse_data_bot/src/main.py
 Restart=on-failure
 
+# Logging configuration
+LogsDirectory=discord_nse_data_bot
+StandardOutput=file:/var/log/discord_nse_data_bot/bot.log
+StandardError=inherit
+
 Environment=MPLCONFIGDIR=/tmp/discord_nse_data_bot/.matplotlib
 EnvironmentFile=/etc/discord_nse_data_bot.env
 
